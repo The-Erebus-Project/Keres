@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.github.vizanarkonin.keres.core.grpc";
+option java_outer_classname = "CoreProto";
+option objc_class_prefix = "CPR";
+
+// ######################################################################
+// ######################################################################
+// Erebus data protocol
+//
+// This file contains all pieces of data contract, used by Erebus project.
+// DO NOT modify it, unless you really intend to alter the data protocol itself
+// ###################################################################### 
+// ######################################################################
+
+// ######################################################################
+// Handshake section
+// Primarily used to verify whether a connecting node slot is already taken
+// If it is - client should immideately disconnect.
+// If not - it should go for ControlsSvc.StreamControls
+// ######################################################################
+
+service HandshakeSvc {
+    rpc Connect(HandshakeRequest) returns (MessageResponse);
+}
+
+message HandshakeRequest {
+    string nodeId   = 1;
+    int64 projectId = 2;
+}
+
+// ######################################################################
+// Nodes status section
+// Used to send node state update to a client
+// ######################################################################
+
+service StatusSvc {
+    rpc SendStatusUpdate(ClientStatusMessage) returns (MessageResponse);
+}
+
+message ClientStatusMessage {
+    int64       projectId   = 1;
+    string      nodeId      = 2;
+    NodeStatus  status      = 3;
+    string      details     = 4;
+    int64       timestamp   = 5;
+}
+
+enum NodeStatus {
+    DISCONNECTED    = 0;
+    IDLE            = 1;
+    PREPARING       = 2;
+    RUNNING         = 3;
+    STOPPING        = 4;
+    STOPPED         = 5;
+    FINISHED        = 6;
+    RESERVED        = 7;
+}
+
+// ######################################################################
+// Node controls section
+// ######################################################################
+
+service ControlsSvc {
+    // The structure in this stream is inversed - in this case, we request actions on the server side,
+    // while client confirms whether it could process it or not.
+    // Thus, don't be alarmed with the use of MessageResponse objects as request parameter.
+    rpc StreamControls(stream MessageResponse)                          returns (stream NodeControlRequest);
+    // Standard uniary calls
+    // Sent on request from server's NodeControlRequest
+    rpc SubmitResults(RunLogRequest)                                    returns (MessageResponse);
+    rpc SendParametersList(ParametersListRequest)                       returns (MessageResponse);
+    rpc SendParameterValues(CurrentNodeParameters)                      returns (MessageResponse);
+    rpc SendAvailableScenariosList(SimulationsListRequest)              returns (MessageResponse);
+    rpc SendAvailableUserDefinitionsList(UserDefinitionsListRequest)    returns (MessageResponse);
+}
+
+message NodeControlRequest {
+    NodeControlCommand  command     = 1;
+    string              parameter   = 2;
+}
+
+enum NodeControlCommand {
+    START_SCENARIO              = 0;
+    STOP_SCENARIO               = 1;
+    SUBMIT_RESULTS              = 2;
+    SEND_PARAMETERS_LIST        = 3;
+    UPDATE_PARAMETERS_VALUES    = 4;
+    SEND_PARAMETERS_VALUES      = 5;
+    RESERVE                     = 6;
+    SEND_SCENARIOS_LIST         = 7;
+    SEND_USER_DEFS_LIST         = 8;
+    PING                        = 9;
+}
+
+message RunLogRequest {
+    int64  projectId    = 1;
+    string nodeId       = 2;
+    string runUUID      = 3;
+    string logContents  = 4;
+}
+
+message ParametersListRequest {
+    int64                   projectId      = 1;
+    string                  nodeId         = 2;
+    // Key is arg name, value is it's type
+    map<string, ParamType>  parameters     = 3;
+}
+
+// Enums and composites
+enum ParamType {
+    SCENARIO                = 0;
+    SCENARIO_NAME           = 1;
+    USER_DEFINITION_NAME    = 2;
+    INT                     = 3;
+    STRING                  = 4;
+    BOOL                    = 5;
+}
+
+message NodeParameter {
+    string name         = 1;
+    ParamType type      = 2;
+    oneof value {
+        string str      = 3;
+        int64 int       = 4;
+        bool bool       = 5;
+    }
+}
+
+message CurrentNodeParameters {
+    int64                   projectId   = 1;
+    string                  nodeId      = 2;
+    repeated NodeParameter  parameters  = 3;
+}
+
+message SimulationData {
+    string className    = 1;
+    string simulationId = 2;
+    string description  = 3;
+    string checksum     = 4;
+}
+
+message SimulationsListRequest {
+    int64                   projectId   = 1;
+    string                  nodeId      = 2;
+    repeated SimulationData simulations = 3;
+}
+
+message UserDefinitionData {
+    string className    = 1;
+    string userDefId    = 2;
+    string description  = 3;
+    string checksum     = 4;
+}
+
+message UserDefinitionsListRequest {
+    int64                       projectId       = 1;
+    string                      nodeId          = 2;
+    repeated UserDefinitionData userDefinitions = 3;
+}
+
+// ######################################################################
+// Utils section
+// ######################################################################
+
+message Empty {}
+
+message MessageResponse {
+    ResponseStatus  status      = 1;
+    string          details     = 2;
+    int64           timestamp   = 3;
+}
+
+enum ResponseStatus {
+    ACKNOWLEDGED    = 0;
+    SUCCESS         = 1;
+    FAILURE         = 2;
+    UNAUTHORIZED    = 3;
+}

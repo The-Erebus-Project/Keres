@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Test Report</title>
+    <link rel="icon" type="image/png" href="res/logo.png" />
+    <script type="text/javascript" src="results.js"></script>
+    <script type="text/javascript" src="res/main.js"></script>
+    <link rel="stylesheet" href="res/main.css">
+    <script src="res/jquery-3.7.1.min.js"></script>
+    <script src="res/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="res/bootstrap.min.css">
+    <script src="res/chart.js"></script>
+    <script src="res/chartjs-plugin-annotation.min.js"></script>
+    <script src="res/moment.js"></script>
+    <script src="res/chartjs-adapter-moment.js"></script>
+    <script src="res/hammerjs.js"></script>
+    <script src="res/chartjs-plugin-zoom.min.js"></script>
+
+    <!-- Tablesorter JS -->
+    <script src="res/jquery.tablesorter.min.js"></script>
+    <script src="res/jquery.tablesorter.widgets.min.js"></script>
+    <link rel="stylesheet" href="res/all.min.css">
+</head>
+<body>
+    <header class="sticky-header">
+        <nav class="navbar bg-primary">
+          <div class="container-fluid">
+            <!-- Logo and "Show Users Graph" button -->
+            <div class="d-flex align-items-center">
+                <a class="navbar-brand" href="#">
+                    <img src="res/logo.png" alt="Logo" width="48" height="48">
+                </a>
+                <button class="btn btn-info ms-3" id="toggleUsersGraph">Show Users Graph</button>
+            </div>
+      
+            <!-- Expand/Collapse button (fixed in top-right corner) -->
+            <button class="btn btn-info ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">Settings</button>
+      
+            <!-- Collapsible content -->
+            <div class="collapse navbar-collapse" id="navbarCollapse">
+              <div class="d-flex flex-column w-100 mt-2">
+                <!-- Response Time Thresholds -->
+                <div class="mb-3">
+                  <h5 class="text-muted text-center">Response Time Thresholds</h5>
+                  <div class="d-flex gap-2 justify-content-center">
+                    <div class="form-floating w-15">
+                      <input type="text" class="form-control" id="fastThresholdValue" placeholder="Fast requests, ms">
+                      <label for="fastThresholdValue">Fast requests, ms</label>
+                    </div>
+                    <div class="form-floating w-15">
+                      <input type="text" class="form-control" id="slowThresholdValue" placeholder="Slow requests, ms">
+                      <label for="slowThresholdValue">Slow requests, ms</label>
+                    </div>
+                    <button class="btn btn-success" onclick="update_threshold_values();">Set</button>
+                  </div>
+                </div>
+                <!-- Percentiles -->
+                <div class="mb-3">
+                  <h5 class="text-muted text-center">Percentiles</h5>
+                  <div class="d-flex gap-2 justify-content-center">
+                    <div class="form-floating w-15">
+                      <input type="text" class="form-control" id="firstPercentileValue" placeholder="1st percentile">
+                      <label for="firstPercentileValue">1st percentile, %</label>
+                    </div>
+                    <div class="form-floating w-15">
+                      <input type="text" class="form-control" id="secondPercentileValue" placeholder="2nd percentile">
+                      <label for="secondPercentileValue">2nd percentile, %</label>
+                    </div>
+                    <div class="form-floating w-15">
+                      <input type="text" class="form-control" id="thirdPercentileValue" placeholder="3rd percentile">
+                      <label for="thirdPercentileValue">3rd percentile, %</label>
+                    </div>
+                    <div class="form-floating w-15">
+                      <input type="text" class="form-control" id="fourthPercentileValue" placeholder="4th percentile">
+                      <label for="fourthPercentileValue">4th percentile, %</label>
+                    </div>
+                    <div class="form-floating w-15">
+                      <input type="text" class="form-control" id="fifthPercentileValue" placeholder="5th percentile">
+                      <label for="fifthPercentileValue">5th percentile, %</label>
+                    </div>
+                    <button class="btn btn-success" onclick="update_percentiles();">Set</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </nav>
+    </header>
+    <main class="main-content">
+        <!-- General Information Section -->
+        <section class="container my-5">
+          <h2 class="text-center">General Information</h2>
+          <div class="row">
+            <div class="col-md-6">
+              <canvas id="response_times_distribution_bar_chart" class="bar_chart"></canvas>
+            </div>
+            <div class="col-md-6">
+              <canvas id="requests_distribution_bar_chart" class="bar_chart"></canvas>
+            </div>
+          </div>
+        </section>
+      
+        <!-- Response Times Section -->
+        <section class="container my-5 text-center">
+            <h2>Response Times</h2>
+            <div class="row">
+            <div class="col-md-12">
+                <div id="response_times_chart_legend" class="legend_container"></div>
+                <canvas id="response_times_chart" class="line-chart"></canvas>
+            </div>
+            </div>
+            <div class="row mt-4">
+            <div class="col-md-12">
+                <!-- Resizable table container -->
+                <div class="table-container">
+                <table id="response_times_table" class="table table-bordered tablesorter">
+                    <thead>
+                    <tr>
+                        <th>Request Name <span class="sort-icon"></span></th>
+                        <th>Fastest Response (ms) <span class="sort-icon"></span></th>
+                        <th id="first_percentile_header"><span class="sort-icon"></span></th>
+                        <th id="second_percentile_header"><span class="sort-icon"></span></th>
+                        <th id="third_percentile_header"><span class="sort-icon"></span></th>
+                        <th id="fourth_percentile_header"><span class="sort-icon"></span></th>
+                        <th id="fifth_percentile_header"><span class="sort-icon"></span></th>
+                        <th>Slowest Response (ms) <span class="sort-icon"></span></th>
+                        <th>Average Response Time (ms) <span class="sort-icon"></span></th>
+                        <th>Total Requests <span class="sort-icon"></span></th>
+                        <th>Failed Requests <span class="sort-icon"></span></th>
+                        <th>Failure Percentage (%) <span class="sort-icon"></span></th>
+                    </tr>
+                    </thead>
+                    <tbody id="response_times_table_rows"></tbody>
+                </table>
+                </div>
+            </div>
+            </div>
+        </section>
+
+        <!-- Responses per Second Section -->
+        <section class="container my-5 text-center">
+            <h2>Responses per Second</h2>
+            <div class="row">
+                <div class="col-md-12">
+                    <div id="rps_chart_legend" class="legend_container"></div>
+                    <canvas id="rps_chart" class="line-chart"></canvas>
+                </div>
+            </div>
+        </section>
+      
+        <!-- Failures Over Time Section -->
+        <section class="container my-5 text-center">
+            <h2>Failures Over Time</h2>
+            <div class="row">
+                <div class="col-md-12">
+                    <div id="failures_chart_legend" class="legend_container"></div>
+                    <canvas id="failures_chart" class="line-chart"></canvas>
+                </div>
+            </div>
+            <div class="row mt-4">
+            <div class="col-md-12">
+                <!-- Resizable table container -->
+                <div class="table-container">
+                <table id="failures_table" class="table table-bordered tablesorter">
+                    <thead>
+                    <tr>
+                        <th>Request Name & Cause <span class="sort-icon"></span></th>
+                        <th>Occurrences <span class="sort-icon"></span></th>
+                        <th>Response Code <span class="sort-icon"></span></th>
+                        <th>Response Content <span class="sort-icon"></span></th>
+                    </tr>
+                    </thead>
+                    <tbody id="failures_table_rows"></tbody>
+                </table>
+                </div>
+            </div>
+            </div>
+        </section>
+        
+        <!-- Modal for Error Details -->
+        <div class="modal fade" id="errorModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Response body:</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <pre id="errorModalContent"></pre>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      
+        <!-- Users Over Time Section -->
+        <section class="container my-5 sticky-users-section text-center" id="usersOverTimeSection" style="display: none;">
+            <h2>Users Over Time</h2>
+            <div class="row">
+                <div class="col-md-12">
+                    <div id="users_chart_legend" class="legend_container"></div>
+                    <canvas id="users_chart" class="line-chart"></canvas>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script>
+        // Toggle Users Graph Section
+        document.getElementById('toggleUsersGraph').addEventListener('click', function () {
+          const usersSection = document.getElementById('usersOverTimeSection');
+          usersSection.style.display = usersSection.style.display === 'none' ? 'block' : 'none';
+        });
+
+        set_threshold_values(fast_threshold, slow_threshold);
+        set_percentile_values(first_percentile_value, second_percentile_value, third_percentile_value, fourth_percentile_value, fifth_percentile_value);
+        draw_response_times_distribution_chart();
+        draw_requests_distribution_chart();
+        draw_response_times_section();
+        draw_rps_graph();
+        draw_failures_graph();
+        populate_response_failures_table();
+        draw_users_graph();
+        
+        $(function() {
+            $('.tablesorter').tablesorter({
+            theme: 'bootstrap', // Use Bootstrap theme
+            widgets: ['zebra', 'filter'], // Optional: Add zebra striping and filtering
+            widgetOptions: {
+                filter_external: '.search', // Optional: Add a search box
+                filter_columnFilters: false, // Optional: Disable column filters
+            }
+            });
+        });
+    </script>
+</body>
+</html>

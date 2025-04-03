@@ -1,0 +1,87 @@
+.sticky-header {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    z-index: 1000; /* Ensure it stays above other content */
+}
+
+ /* Ensure the body has enough space for sticky behavior */
+body {
+    /* Gradient background */
+    background: linear-gradient(
+        to bottom,
+        rgba(233, 84, 32, 0.2), /* Start color (dark) with 90% opacity */
+        rgba(255, 255, 255, 0.1) /* End color (white) with 60% opacity */
+    );
+    background-attachment: fixed; /* Make the background fixed */
+    background-size: cover; /* Ensure it covers the entire page */
+    min-height: 100vh; /* Full viewport height */
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex-grow: 1; /* Allow main content to grow and fill space */
+}
+
+/* Ensure the collapse button stays in the top-right corner */
+.navbar-toggler {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+}
+
+/* Adjust spacing for the collapsible content */
+.navbar-collapse {
+    margin-top: 0.5rem;
+}
+
+.sticky-users-section {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    z-index: 999;
+    padding: 1rem;
+}
+
+.bar_chart {
+    height: 350px !important;
+}
+
+.line-chart {
+    height: 250px !important; /* Override ChartJS default height */
+}
+
+.table-container {
+    position: relative;
+    resize: vertical;
+    overflow: auto;
+    min-height: 250px;
+    height: 250px;
+}
+/* Add sorting indicators */
+.sort-icon {
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 0.8em;
+    color: #007bff; /* Bootstrap primary color */
+}
+
+.tablesorter-headerAsc::after {
+    content: " ▲"; /* Font Awesome sort-up icon */
+    font-weight: 900;
+}
+
+.tablesorter-headerDesc::after {
+    content: " ▼"; /* Font Awesome sort-down icon */
+    font-weight: 900;
+}
+
+#chartjs-tooltip {
+    background-color: white;
+    z-index: 1000;
+}
+
+.legend_container {
+    justify-items: center;
+}
