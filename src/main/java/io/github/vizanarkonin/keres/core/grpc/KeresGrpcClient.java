@@ -1,20 +1,5 @@
 package io.github.vizanarkonin.keres.core.grpc;
 
-import io.github.vizanarkonin.keres.core.grpc.ClientStatusMessage;
-import io.github.vizanarkonin.keres.core.grpc.ControlsSvcGrpc;
-import io.github.vizanarkonin.keres.core.grpc.CurrentNodeParameters;
-import io.github.vizanarkonin.keres.core.grpc.HandshakeRequest;
-import io.github.vizanarkonin.keres.core.grpc.HandshakeSvcGrpc;
-import io.github.vizanarkonin.keres.core.grpc.MessageResponse;
-import io.github.vizanarkonin.keres.core.grpc.NodeControlCommand;
-import io.github.vizanarkonin.keres.core.grpc.NodeControlRequest;
-import io.github.vizanarkonin.keres.core.grpc.NodeStatus;
-import io.github.vizanarkonin.keres.core.grpc.ResponseStatus;
-import io.github.vizanarkonin.keres.core.grpc.SimulationData;
-import io.github.vizanarkonin.keres.core.grpc.SimulationsListRequest;
-import io.github.vizanarkonin.keres.core.grpc.StatusSvcGrpc;
-import io.github.vizanarkonin.keres.core.grpc.UserDefinitionData;
-import io.github.vizanarkonin.keres.core.grpc.UserDefinitionsListRequest;
 import io.github.vizanarkonin.keres.KeresController;
 import io.github.vizanarkonin.keres.core.utils.ThreadHolder;
 import io.github.vizanarkonin.keres.core.utils.TimeUtils;
@@ -202,7 +187,7 @@ public class KeresGrpcClient {
                         break;
                     }
                     case NodeControlCommand.SEND_SCENARIOS_LIST: {
-                        SimulationsListRequest.Builder requestBuilder = SimulationsListRequest.newBuilder()
+                        ScenariosListRequest.Builder requestBuilder = ScenariosListRequest.newBuilder()
                             .setProjectId(projectId)
                             .setNodeId(nodeId);
 
@@ -210,14 +195,14 @@ public class KeresGrpcClient {
                             String className = entry.getKey();
                             List<String> values = entry.getValue();
 
-                            SimulationData dataEntry = SimulationData.newBuilder()
+                            ScenarioData dataEntry = ScenarioData.newBuilder()
                                 .setClassName(className)
-                                .setSimulationId(values.get(0))
+                                .setScenarioId(values.get(0))
                                 .setDescription(values.get(1))
                                 .setChecksum(values.get(2))
                                 .build();
                             
-                            requestBuilder.addSimulations(dataEntry);
+                            requestBuilder.addScenarios(dataEntry);
                         }
 
                         controlsBlockingStub.sendAvailableScenariosList(requestBuilder.build());

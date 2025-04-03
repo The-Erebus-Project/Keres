@@ -72,7 +72,7 @@ service ControlsSvc {
     rpc SubmitResults(RunLogRequest)                                    returns (MessageResponse);
     rpc SendParametersList(ParametersListRequest)                       returns (MessageResponse);
     rpc SendParameterValues(CurrentNodeParameters)                      returns (MessageResponse);
-    rpc SendAvailableScenariosList(SimulationsListRequest)              returns (MessageResponse);
+    rpc SendAvailableScenariosList(ScenariosListRequest)                returns (MessageResponse);
     rpc SendAvailableUserDefinitionsList(UserDefinitionsListRequest)    returns (MessageResponse);
 }
 
@@ -134,17 +134,17 @@ message CurrentNodeParameters {
     repeated NodeParameter  parameters  = 3;
 }
 
-message SimulationData {
+message ScenarioData {
     string className    = 1;
-    string simulationId = 2;
+    string scenarioId   = 2;
     string description  = 3;
     string checksum     = 4;
 }
 
-message SimulationsListRequest {
+message ScenariosListRequest {
     int64                   projectId   = 1;
     string                  nodeId      = 2;
-    repeated SimulationData simulations = 3;
+    repeated ScenarioData   scenarios   = 3;
 }
 
 message UserDefinitionData {
