@@ -1,10 +1,20 @@
-# Keres - Your hand in the underworld!
-## What is it
+# Keres - Performance Testing as Code
+
+<p align="center">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg"/>
+    <img src="https://img.shields.io/badge/java-21%2B-orange"/>
+<p>
+
+<div align="center">
+  <img src="src/main/resources/report-viewer/res/logo.png" alt="Keres logo" height="180"/>
+</div>
+
+## The Agent of Controlled Chaos
+> "Load testing without Keres is like combat-testing armor with a toothpick."
+> _- The Performance Warrior's Handbook_
+
 **Keres** is a code-powered load generation and performance testing tool. It provides a set of tools for designing, composing and executing performance tests.
 It can be used as a standalone entity, or it can be used as a **node**, connected to **Nyx** hub application, thus allowing users to generate scalable amounts of load on demand.
-
-The goal of the **Erebus** project is to provide a free and open-source, scalable, code-powered solution for organizing and conducting performance testing.
-**Keres**, being part of this project, provides a system to organize the tests library and provide scalability in terms of execution.
 
 ## Getting started
 ### Installation
@@ -13,7 +23,7 @@ First step is adding the core dependency in your project **.pom** file:
 <dependency>
     <groupId>io.github.vizanarkonin</groupId>
     <artifactId>keres</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.2</version>
 </dependency>
 ```
 
@@ -295,7 +305,12 @@ Note that there are 3 types of users that can be created by scenario executor:
 - **Cycled** user - Initializes, runs specified amount of tasks and then finishes.
 - **Looped** user - Initializes, runs indefinetly, stops and finishes when commanded by scenario executor (or an emergency stop is called).
 
-### Executing created scenarios
+### Execution
+**Keres** provides 2 execution options - standalone and node. 
+Standalone option implies that the process we run is completely independent and works on it's own. It is useful for debugging and low-load runs.
+Node option turns it into a remote-controlled load generator - it's configuration can be configured from Nyx hub page, and multiple nodes can be combined to generate load during a test run.
+
+#### Executing created scenarios
 Once everything is done - we can proceed to running the scenario.
 Right now there are no dedicated plugins for maven/gradle/ant, so initialization is up to end user.
 For this example we will use standard main-class approach:
@@ -312,3 +327,30 @@ public static void main(String[] args) {
     KeresController.runScenario();
 }
 ```
+
+#### Starting project as Node
+**Keres**-powered project can be connected to **Nyx** hub application, allowing users to scale the load horizontally.
+In order to connect to a hub, you need to meet these conditions:
+- A project must exist in the hub application
+- A node must be registered inside the project
+- A connection mode is known - could be plaintext, default (transport security) or tls
+
+With all this - we can start the project as a node.
+Right now there are no dedicated plugins for maven/gradle/ant, so initialization is up to end user.
+For this example we will use standard main-class approach:
+```java
+public static void main(String[] args) {
+    KeresController.setPrintFailedRequests(false);
+    KeresController.setResultsFolderRoot("results");
+    KeresController.injectConfigProvider(Config.class);
+
+    KeresController.initNode(
+        "localhost",                        // Host
+        9090,                               // gRPC port. Default value - 9090
+        1,                                  // Project ID
+        "NODE-4",                           // Node ID
+        KeresGrpcConnectionMode.PLAINTEXT   // Connection mode
+    );
+}
+```
+Once connected - the entry in nodes table will change it's status to "Idle". This means the node is connected and ready to work.
