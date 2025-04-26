@@ -43,8 +43,9 @@ public class KeresGrpcClient {
     private final int                                       hubPort;
     @Getter
     private final int                                       projectId;
+    // This field is no longer final, since we can use non-strict mode with empty-string NodeID
     @Getter
-    private final String                                    nodeId;
+    private String                                          nodeId;
     @Getter
     private final KeresGrpcConnectionMode                   mode;
 
@@ -126,11 +127,15 @@ public class KeresGrpcClient {
             throw new RuntimeException("Keres gRPC connect - handshake failed. Reason - " + res.getDetails());
         }
         log.info("Handshake successful. Attempting to initiate control stream");
+        if (nodeId.equals("") && res.getStatus() == ResponseStatus.SUCCESS) {
+            log.info("NodeID returned by the hub is '%s'. Setting it as new NodeID for the client", res.getDetails());
+            nodeId = res.getDetails();
+        }
 
         // After that, we're initializing stream observers
         res = MessageResponse.newBuilder()
             .setStatus(ResponseStatus.ACKNOWLEDGED)
-            .setDetails(String.format("{\"projectId\" : %d, \"nodeId\" : %s}", projectId, nodeId))
+            .setDetails(String.format("{\"projectId\" : %d, \"nodeId\" : \"%s\"}", projectId, nodeId))
             .setTimestamp(Instant.now().toEpochMilli())
             .build();
         

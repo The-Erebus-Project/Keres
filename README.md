@@ -354,3 +354,12 @@ public static void main(String[] args) {
 }
 ```
 Once connected - the entry in nodes table will change it's status to "Idle". This means the node is connected and ready to work.
+##### Strict vs Non-strict modes
+Starting from version **1.1.0** of **Nyx**, a project now has a **Strict** flag available, which can be set/changed in project settings.
+Essentially - this flag regulates the nodes admission policy:
+- If the project is **Strict** - only nodes with registered ID's are able to connect to it. If a non-registered or empty node ID is provided - that node is not admissed.
+- If the project is not set as Strict:
+  - If node have provided a non-empty node ID - it is processed by "strict" rules (i.e. registration is validated).
+  - If node ID was not specified (empty string) - Nyx creates a temporary node entity (it doesn't get persisted to DB and only exists as long as node is connected) and returns the generated node ID back to the client. Once the node is disconnected - that entity is discarded.
+
+This addition allows user to create "dynamic" projects, where the amount of nodes is not pre-defined and can vary depending on the tasks or deployment types.
