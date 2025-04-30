@@ -17,6 +17,8 @@
     <script src="res/chartjs-adapter-moment.js"></script>
     <script src="res/hammerjs.js"></script>
     <script src="res/chartjs-plugin-zoom.min.js"></script>
+    <script src="res/chartjs-plugin-datalabels.js"></script>
+    <script>Chart.register(ChartDataLabels);</script>
 
     <!-- Tablesorter JS -->
     <script src="res/jquery.tablesorter.min.js"></script>
@@ -32,7 +34,7 @@
                 <a class="navbar-brand" href="#">
                     <img src="res/logo.png" alt="Logo" width="48" height="48">
                 </a>
-                <button class="btn btn-info ms-3" id="toggleUsersGraph">Show Users Graph</button>
+                <button class="btn btn-info ms-3" id="toggleUsersGraph">Toggle Users Graph</button>
             </div>
       
             <!-- Expand/Collapse button (fixed in top-right corner) -->
@@ -53,7 +55,7 @@
                       <input type="text" class="form-control" id="slowThresholdValue" placeholder="Slow requests, ms">
                       <label for="slowThresholdValue">Slow requests, ms</label>
                     </div>
-                    <button class="btn btn-success" onclick="update_threshold_values();">Set</button>
+                    <button class="btn btn-success" onclick="updateThresholdValues();">Set</button>
                   </div>
                 </div>
                 <!-- Percentiles -->
@@ -80,7 +82,7 @@
                       <input type="text" class="form-control" id="fifthPercentileValue" placeholder="5th percentile">
                       <label for="fifthPercentileValue">5th percentile, %</label>
                     </div>
-                    <button class="btn btn-success" onclick="update_percentiles();">Set</button>
+                    <button class="btn btn-success" onclick="updatePercentiles();">Set</button>
                   </div>
                 </div>
               </div>
@@ -215,15 +217,15 @@
           usersSection.style.display = usersSection.style.display === 'none' ? 'block' : 'none';
         });
 
-        set_threshold_values(fast_threshold, slow_threshold);
-        set_percentile_values(first_percentile_value, second_percentile_value, third_percentile_value, fourth_percentile_value, fifth_percentile_value);
-        draw_response_times_distribution_chart();
-        draw_requests_distribution_chart();
-        draw_response_times_section();
-        draw_rps_graph();
-        draw_failures_graph();
-        populate_response_failures_table();
-        draw_users_graph();
+        setThresholdValues(fast_threshold, slow_threshold);
+        setPercentileValues(first_percentile_value, second_percentile_value, third_percentile_value, fourth_percentile_value, fifth_percentile_value);
+        drawResponseTimesDistributionChart();
+        drawRequestsDistributionChart();
+        drawResponseTimesSection();
+        drawRPSGraph();
+        drawFailuresGraph();
+        populateResponseFailuresTable();
+        drawUsersGraph();
         
         $(function() {
             $('.tablesorter').tablesorter({

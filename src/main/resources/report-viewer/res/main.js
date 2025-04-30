@@ -32,7 +32,7 @@ const chartColors = [
     'rgba(220, 20, 60, 0.8)',       // Crimson
   ];
 
-function set_threshold_values(low, high) {
+function setThresholdValues(low, high) {
     fast_threshold = low;
     slow_threshold = high;
 
@@ -40,7 +40,7 @@ function set_threshold_values(low, high) {
     document.getElementById("slowThresholdValue").value = slow_threshold;
 }
 
-function set_percentile_values(first, second, third, fourth, fifth) {
+function setPercentileValues(first, second, third, fourth, fifth) {
     first_percentile_value = first;
     second_percentile_value = second;
     third_percentile_value = third;
@@ -60,14 +60,14 @@ function set_percentile_values(first, second, third, fourth, fifth) {
     document.getElementById("fifthPercentileValue").value = fifth;
 }
 
-function update_threshold_values() {
-    set_threshold_values(document.getElementById("fastThresholdValue").value, document.getElementById("slowThresholdValue").value);
-    draw_response_times_distribution_chart();
-    draw_response_times_section();
+function updateThresholdValues() {
+    setThresholdValues(document.getElementById("fastThresholdValue").value, document.getElementById("slowThresholdValue").value);
+    drawResponseTimesDistributionChart();
+    drawResponseTimesSection();
 }
 
-function update_percentiles() {
-    set_percentile_values(
+function updatePercentiles() {
+    setPercentileValues(
         document.getElementById("firstPercentileValue").value,
         document.getElementById("secondPercentileValue").value,
         document.getElementById("thirdPercentileValue").value,
@@ -75,14 +75,14 @@ function update_percentiles() {
         document.getElementById("fifthPercentileValue").value
     )
 
-    populate_response_times_table();
+    populateResponseTimesTable();
 }
 
-function draw_response_times_section() {
+function drawResponseTimesSection() {
     if (response_times_chart !== null) {
         response_times_chart.destroy();
     }
-    response_times_chart = draw_graph(document.getElementById("response_times_chart"), "responseTimesLog", "Response time, ms", {
+    response_times_chart = drawGraph(document.getElementById("response_times_chart"), "responseTimesLog", "Response time, ms", {
         line1: {
             label: {
                 content: 'Fast',
@@ -109,18 +109,18 @@ function draw_response_times_section() {
         }
     },
     "response_times_chart_legend");
-    populate_response_times_table();
+    populateResponseTimesTable();
 }
 
-function draw_rps_graph() {
-    rps_chart = draw_graph(document.getElementById("rps_chart"), "requestsPerSecondLog", "Responses per second", {}, "rps_chart_legend");
+function drawRPSGraph() {
+    rps_chart = drawGraph(document.getElementById("rps_chart"), "requestsPerSecondLog", "Responses per second", {}, "rps_chart_legend");
 }
 
-function draw_failures_graph() {
-    failures_chart = draw_graph(document.getElementById("failures_chart"), "failuresLog", "Failures", {}, "failures_chart_legend");
+function drawFailuresGraph() {
+    failures_chart = drawGraph(document.getElementById("failures_chart"), "failuresLog", "Failures", {}, "failures_chart_legend");
 }
 
-function draw_response_times_distribution_chart() {
+function drawResponseTimesDistributionChart() {
     let fast_responses = 0;
     let normal_responses = 0;
     let slow_responses = 0;
@@ -167,10 +167,20 @@ function draw_response_times_distribution_chart() {
     if (response_times_distribution_chart !== null) {
         response_times_distribution_chart.destroy();
     }
-    response_times_distribution_chart = draw_bar_chart(document.getElementById("response_times_distribution_bar_chart"), datasets, labels);
+
+    const datalabels = {
+        formatter: (value, ctx) => {
+            const datapoints = ctx.chart.data.datasets[0].data
+            const total = datapoints.reduce((total, datapoint) => total + datapoint, 0)
+            const percentage = value / total * 100
+            return percentage.toFixed(2) + "%";
+        },
+        color: 'rgba(44, 36, 40, 0.8)',
+    }
+    response_times_distribution_chart = drawBarChart(document.getElementById("response_times_distribution_bar_chart"), datasets, labels, datalabels);
 }
 
-function draw_requests_distribution_chart() {
+function drawRequestsDistributionChart() {
     let labels = [];
     let datasets = [
         {
@@ -202,11 +212,38 @@ function draw_requests_distribution_chart() {
     if (request_distribution_chart !== null) {
         request_distribution_chart.destroy();
     }
-    request_distribution_chart = draw_bar_chart(document.getElementById("requests_distribution_bar_chart"), datasets, labels);
+
+    const datalabels = {
+        formatter: (value, ctx) => {
+            // Calculate stack-relative percentage (alternative value)
+            const allValues = ctx.chart.data.datasets.map(ds => ds.data[ctx.dataIndex]);
+            const stackTotal = allValues.reduce((sum, val) => sum + val, 0);
+            const stackPercentage = stackTotal > 0 ? (value / stackTotal * 100) : 0;
+            
+            // Calculate dataset-relative percentage
+            const datasetTotal = ctx.dataset.data.reduce((sum, val) => sum + val, 0);
+            const datasetPercentage = datasetTotal > 0 ? (value / datasetTotal * 100) : 0;
+            
+            // Return both percentages formatted
+            return [
+                `${stackPercentage.toFixed(2)}%`,
+                `${datasetPercentage.toFixed(2)}%`
+            ].join('\n');
+        },
+        color: 'rgba(44, 36, 40, 0.8)',
+        font: {
+            size: 10 // Smaller font to fit both values
+        }
+    }
+
+    request_distribution_chart = drawBarChart(document.getElementById("requests_distribution_bar_chart"), datasets, labels, datalabels);
 }
 
-function draw_graph(canvas, valuesArray, metricName, annotations, legendContainerElemendId) {
+function drawGraph(canvas, valuesArray, metricName, annotations, legendContainerElemendId) {
     let datasets = [];
+
+    // Create a map for totals with initial zero values for each timestamp
+    const totalsMap = new Map(timestamps.map(t => [t, 0]));
 
     for (const [key, value] of Object.entries(requests_averages_data)) {
         let color = chartColors[datasets.length % chartColors.length];
@@ -218,22 +255,35 @@ function draw_graph(canvas, valuesArray, metricName, annotations, legendContaine
             backgroundColor: color
         };
 
-        for (timestamp of timestamps) {
-            let entry = value[valuesArray].find((entry) => entry.timeStamp === timestamp);
-            if (entry === undefined) {
-                values_data_set.data.push({x: timestamp, y: 0});
-            } else {
-                values_data_set.data.push({x: entry.timeStamp, y: entry.logValue});
-            }
+        // Create a lookup map for this dataset's entries
+        const entryMap = new Map(value[valuesArray].map(entry => [entry.timeStamp, entry.logValue]));
+
+        for (const timestamp of timestamps) {
+            const logValue = entryMap.get(timestamp) || 0;
+            values_data_set.data.push({x: timestamp, y: logValue});
+            
+            // Accumulate to totals
+            totalsMap.set(timestamp, totalsMap.get(timestamp) + logValue);
         }
         
         datasets.push(values_data_set);
     }
 
-    return create_chart(canvas, datasets, metricName, annotations, legendContainerElemendId);
+    // Add the Totals dataset
+    datasets.unshift({
+        label: "Total",
+        data: Array.from(totalsMap.entries()).map(([x, y]) => ({x, y})),
+        fill: false,
+        borderColor: "rgba(39, 157, 245, 0.8)",
+        backgroundColor: "rgba(39, 157, 245, 0.8)",
+        borderWidth: 2,
+        borderDash: [5, 5]
+    });
+
+    return createChart(canvas, datasets, metricName, annotations, legendContainerElemendId);
 }
 
-function draw_users_graph() {
+function drawUsersGraph() {
     let dataset = {
         label: "Active users",
         data: [],
@@ -254,132 +304,137 @@ function draw_users_graph() {
     let datasets = [];
     datasets.push(dataset);
 
-    users_chart = create_chart(document.getElementById("users_chart"), datasets, "Active users, no.", {}, "users_chart_legend");
+    users_chart = createChart(document.getElementById("users_chart"), datasets, "Active users, no.", {}, "users_chart_legend");
 }
 
-function populate_response_times_table() {
-    document.getElementById("response_times_table_rows").innerHTML = "";
+function populateResponseTimesTable() {
+    const tableBody = document.getElementById("response_times_table_rows");
+    tableBody.innerHTML = "";
     let rows = [];
+    
+    // Variables to accumulate totals
+    let total_min = 0;
+    let total_p1 = 0;
+    let total_p2 = 0;
+    let total_p3 = 0;
+    let total_p4 = 0;
+    let total_p5 = 0;
+    let total_max = 0;
+    let total_avg = 0;
+    let total_requests = 0;
+    let total_failures = 0;
+    let endpoint_count = 0;
 
     for (const [key, value] of Object.entries(requests_averages_data)) {
-        let response_times_map = [];
-        let failures_map = [];
-        let total_response_time = 0;
-        let total_failures = 0;
-
-        value.responseTimesLog.forEach((entry) => {
-            if (entry.logValue > 0) {
-                response_times_map.push(entry.logValue);
-                total_response_time += entry.logValue;
-            }
-        });
-
-        value.failuresLog.forEach((entry) => {
-            if (entry.logValue > 0) {
-                failures_map.push(entry.logValue);
-                total_failures += entry.logValue;
-            }
-        });
-
-        response_times_map.sort((a, b) => a - b);
-        let first_percentile = response_times_map[Math.floor((response_times_map.length / 100) * first_percentile_value)];
-        let second_percentile = response_times_map[Math.floor((response_times_map.length / 100) * second_percentile_value)];
-        let third_percentile = response_times_map[Math.floor((response_times_map.length / 100) * third_percentile_value)];
-        let fourth_percentile = response_times_map[Math.floor((response_times_map.length / 100) * fourth_percentile_value)];
-        let fifth_percentile = response_times_map[Math.floor((response_times_map.length / 100) * fifth_percentile_value)];
-
-        let average_rsp_time = Math.floor(total_response_time / response_times_map.length);
-        let failures_percentage = Math.floor((total_failures / requests_log[key].length) * 100);
-
-        rows.push([
-            '<tr>',
-            '   <td>' + key + '</td>',
-            '   <td>' + response_times_map[0] + '</td>',
-            '   <td>' + first_percentile + '</td>',
-            '   <td>' + second_percentile + '</td>',
-            '   <td>' + third_percentile + '</td>',
-            '   <td>' + fourth_percentile + '</td>',
-            '   <td>' + fifth_percentile + '</td>',
-            '   <td>' + response_times_map[response_times_map.length - 1] + '</td>',
-            '   <td>' + average_rsp_time + '</td>',
-            '   <td>' + requests_log[key].length + '</td>',
-            '   <td>' + total_failures + '</td>',
-            '   <td>' + (isNaN(failures_percentage) ? 0 : failures_percentage) + '%</td>',
-            '</tr>'
-        ].join(""));
+        endpoint_count++;
+        
+        const responseTimes = value.responseTimesLog
+            .filter(entry => entry.logValue > 0)
+            .map(entry => entry.logValue);
+        
+        responseTimes.sort((a, b) => a - b);
+        
+        const count = responseTimes.length;
+        const total_response_time = responseTimes.reduce((sum, val) => sum + val, 0);
+        
+        const getPercentile = (p) => count > 0 ? 
+            responseTimes[Math.floor((count / 100) * p)] : 
+            0;
+            
+        const p1 = getPercentile(first_percentile_value);
+        const p2 = getPercentile(second_percentile_value);
+        const p3 = getPercentile(third_percentile_value);
+        const p4 = getPercentile(fourth_percentile_value);
+        const p5 = getPercentile(fifth_percentile_value);
+        
+        const failures = value.failuresLog
+            .filter(entry => entry.logValue > 0)
+            .map(entry => entry.logValue);
+            
+        const total_failure_count = failures.reduce((sum, val) => sum + val, 0);
+        const request_count = requests_log[key]?.length || 0;
+        const failure_percentage = request_count > 0 ? 
+            Math.floor((total_failure_count / request_count) * 100) : 
+            0;
+        
+        total_min += responseTimes[0] || 0;
+        total_p1 += p1;
+        total_p2 += p2;
+        total_p3 += p3;
+        total_p4 += p4;
+        total_p5 += p5;
+        total_max += responseTimes[count - 1] || 0;
+        total_avg += count > 0 ? Math.floor(total_response_time / count) : 0;
+        total_requests += request_count;
+        total_failures += total_failure_count;
+        
+        rows.push(
+            `<tr>
+               <td>${key}</td>
+               <td>${responseTimes[0] || 0}</td>
+               <td>${p1}</td>
+               <td>${p2}</td>
+               <td>${p3}</td>
+               <td>${p4}</td>
+               <td>${p5}</td>
+               <td>${count > 0 ? responseTimes[count - 1] : 0}</td>
+               <td>${count > 0 ? Math.floor(total_response_time / count) : 0}</td>
+               <td>${request_count}</td>
+               <td>${total_failure_count}</td>
+               <td>${failure_percentage}%</td>
+            </tr>`
+        );
     }
 
-    document.getElementById("response_times_table_rows").innerHTML = rows.join("");
+    if (endpoint_count > 0) {
+        rows.push(
+            `<tr style="font-weight: bold;">
+               <td>Total</td>
+               <td>${total_min}</td>
+               <td>${total_p1}</td>
+               <td>${total_p2}</td>
+               <td>${total_p3}</td>
+               <td>${total_p4}</td>
+               <td>${total_p5}</td>
+               <td>${total_max}</td>
+               <td>${Math.floor(total_avg / endpoint_count)}</td>
+               <td>${total_requests}</td>
+               <td>${total_failures}</td>
+               <td>${total_requests > 0 ? Math.floor((total_failures / total_requests) * 100) : 0}%</td>
+            </tr>`
+        );
+    }
+
+    tableBody.innerHTML = rows.join("");
 }
 
-function populate_response_failures_table() {
+function populateResponseFailuresTable() {
     document.getElementById("failures_table_rows").innerHTML = "";
     let rows = [];
-    let modals = [];
     let counter = 1;
 
     for (const [key, value] of Object.entries(failures)) {
-        rows.push([
-            '<tr>',
-            '   <td>' + key + '</td>',
-            '   <td>' + value.occurrencesCount + '</td>',
-            '   <td>' + value.responseCode + '</td>',
-            '   <td>',
-            '       <button class="btn btn-primary" onclick="open_error_content_modal(' + counter + ');">View</button>',
-            '   </td>',
-            '</tr>'
-        ].join(""));
-        
-        modals.push([
-            '<div id="failure_content_modal_' + counter + '" class="modal-custom" style="display: none;">',
-            '    <h5 class="mb-2">Response content</h5>',
-            '    <div class="mb-2" style="width: 90%; height: 90%;">',
-            '       <iframe id="failure_content_frame_' + counter + '" style="height: 100%; width: 100%;"></iframe>',
-            '    </div>',
-            '    <button class="btn btn-primary mb-2">Close</button>',
-            '</div>',
-        ].join(""));
+        rows.push(
+            `<tr>
+               <td>${key}</td>
+               <td>${value.occurrencesCount}</td>
+               <td>${value.responseCode}</td>
+               <td>
+                   <button class="btn btn-primary" onclick="openErrorContentModal(${counter});">View</button>
+               </td>
+            </tr>`
+        );
         
         failure_entries.set(counter, value.response);
         counter += 1;
     }
 
     document.getElementById("failures_table_rows").innerHTML = rows.join("");
-    //document.getElementById("failure_modals_container").innerHTML = modals.join("");
-    /*
-    for (const [key, value] of failure_entries) {
-        let container = document.getElementById("failure_content_frame_" + key);
-        container.srcdoc = value;
-        container.sandbox = '';
-    }
-    */
 }
 
-function open_error_content_modal(number) {
+function openErrorContentModal(number) {
     document.getElementById("errorModalContent").innerHTML = failure_entries.get(number);
     $('#errorModal').modal('show');
-}
-
-function create_darkened_background() {
-    if (document.getElementById("darkened_background") !== null) {
-        // spinner already exist. Log and exit
-        console.log("background already exists. Skipping");
-        return;
-    }
-
-    let container = document.createElement("div");
-    container.className = "loading_overlay";
-    container.id = "darkened_background";
-
-    document.body.appendChild(container);
-}
-
-function remove_darkened_background() {
-    let container = document.getElementById("darkened_background");
-
-    if (container !== null) {
-        container.remove();
-    }
 }
 
 function generateTooltip(context) {
@@ -425,16 +480,15 @@ function generateTooltip(context) {
             innerHtml += '<h7>' + title + '</h7>';
         });
         
-        innerHtml += [
-            '<table>',
-            '   <thead>',
-            '       <tr>',
-            '           <th scope="col">Name</th>',
-            '           <th scope="col">Value</th>',
-            '       </tr>',
-            '   </thead>',
-            '   <tbody>'
-        ].join("");
+        innerHtml += 
+            `<table>
+               <thead>
+                   <tr>
+                       <th scope="col">Name</th>
+                       <th scope="col">Value</th>
+                   </tr>
+               </thead>
+               <tbody>`;
 
         bodyLines.forEach(function(body, i) {
             const colors = tooltipModel.labelColors[i];
@@ -442,12 +496,12 @@ function generateTooltip(context) {
             style += '; border-color:' + colors.borderColor;
             style += '; border-width: 2px';
             let val = body[0].split(":");
-            innerHtml += [
-                '       <tr style="' + style + '">',
-                '           <td>' + val[0] + '</td>',
-                '           <td>' + val[1] + '</td>',
-                '       <tr>'
-            ].join("")
+            innerHtml += 
+                `       <tr style="${style}">
+                           <td>${val[0]}</td>
+                           <td>${val[1]}</td>
+                       <tr>`
+            
         });
         innerHtml += '</tbody></table>';
 
@@ -467,7 +521,7 @@ function generateTooltip(context) {
     tooltipEl.style.pointerEvents = 'none';
 }
 
-function create_chart(container, datasets, metricName, annotations, legendContainerElemendId) {
+function createChart(container, datasets, metricName, annotations, legendContainerElemendId) {
     return new Chart(
         container,
         {
@@ -481,6 +535,9 @@ function create_chart(container, datasets, metricName, annotations, legendContai
                 plugins: {
                     legend: {
                         display: false,
+                    },
+                    datalabels: {
+                        display: false
                     },
                     htmlLegend: {
                         // ID of the container to put the legend in
@@ -569,7 +626,7 @@ function create_chart(container, datasets, metricName, annotations, legendContai
     );
 }
 
-function draw_bar_chart(canvas, datasets, labels) {
+function drawBarChart(canvas, datasets, labels, datalabels) {
     return new Chart(
         canvas,
         {
@@ -603,7 +660,8 @@ function draw_bar_chart(canvas, datasets, labels) {
                     },
                     legend: {
                         display: true
-                    }
+                    },
+                    datalabels: datalabels
                 },
                 responsive: true,
                 maintainAspectRatio: false,
@@ -621,21 +679,6 @@ function draw_bar_chart(canvas, datasets, labels) {
             }
         }
     );
-}
-
-function toggle_users_graph(button) {
-    let element = document.getElementById("users_chart_container");
-    if (element.style.display === "block") {
-        element.style.display = "none";
-        button.classList.remove("btn-warning");
-        button.classList.add("btn-success");
-        button.innerHTML = "Show users chart"
-    } else {
-        element.style.display = "block"
-        button.classList.remove("btn-success");
-        button.classList.add("btn-warning");
-        button.innerHTML = "Hide users chart";
-    }
 }
 
 const getOrCreateLegendList = (chart, id) => {
