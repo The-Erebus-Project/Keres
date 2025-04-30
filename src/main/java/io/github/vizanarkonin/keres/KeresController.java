@@ -141,6 +141,7 @@ public class KeresController {
                 scenario.tearDown();
             } catch (Exception e) {
                 log.fatal(e);
+                log.fatal(ExceptionUtils.getStackTrace(e));
             } finally {
                 if (KeresController.getMode() == KeresMode.NODE) {
                     ClientStatusMessage statusMessage = ClientStatusMessage.newBuilder()

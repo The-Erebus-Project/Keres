@@ -6,11 +6,16 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Utils type, used to handle Keres report files copying.
  * It is used instead of plain files copy due to files being bundled in a jar file
  */
 public class KeresFileUtils {
+    private static final Logger log = LogManager.getLogger("KeresFileUtils");
     public static final String[] reporterResourcesList = new String[] {
         "index.html",
         "res/all.min.css",
@@ -44,6 +49,9 @@ public class KeresFileUtils {
         try {
             Files.copy(source, Paths.get(destination), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
+            log.error(e);
+            log.error(ExceptionUtils.getStackTrace(e));
+            log.error("Source: " + source + ", Destination: " + destination);
             throw new RuntimeException(e);
         }
     }

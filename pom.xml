@@ -6,7 +6,7 @@
 
     <groupId>io.github.vizanarkonin</groupId>
     <artifactId>keres</artifactId>
-    <version>1.2.1</version>
+    <version>1.2.2</version>
 
     <name>Keres</name>
     <description>A code-powered load generation and performance testing tool</description>

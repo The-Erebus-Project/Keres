@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -232,7 +233,9 @@ public class DataCollector {
             Files.createDirectory(Paths.get(targetPath + "/res"));
             // Copying over the reporter template and resources
             for (String reporterFile : KeresFileUtils.reporterResourcesList) {
-                KeresFileUtils.copyResource(ClassLoader.getSystemClassLoader().getResourceAsStream("report-viewer/" + reporterFile), targetPath + "/" + reporterFile);
+                String resourceName = "report-viewer/" + reporterFile;
+                InputStream resourceStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourceName);
+                KeresFileUtils.copyResource(resourceStream, targetPath + "/" + reporterFile);
             }
             PrintWriter resultsWriter = new PrintWriter(targetPath + "/results.js", "UTF-8");
             resultsWriter.println("const test_id = '" + testId + "';");
