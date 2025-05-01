@@ -108,7 +108,8 @@ function drawResponseTimesSection() {
             borderWidth: 2,
         }
     },
-    "response_times_chart_legend");
+    "response_times_chart_legend",
+    false);
     populateResponseTimesTable();
 }
 
@@ -239,7 +240,7 @@ function drawRequestsDistributionChart() {
     request_distribution_chart = drawBarChart(document.getElementById("requests_distribution_bar_chart"), datasets, labels, datalabels);
 }
 
-function drawGraph(canvas, valuesArray, metricName, annotations, legendContainerElemendId) {
+function drawGraph(canvas, valuesArray, metricName, annotations, legendContainerElemendId, includeTotals = true) {
     let datasets = [];
 
     // Create a map for totals with initial zero values for each timestamp
@@ -270,15 +271,17 @@ function drawGraph(canvas, valuesArray, metricName, annotations, legendContainer
     }
 
     // Add the Totals dataset
-    datasets.unshift({
-        label: "Total",
-        data: Array.from(totalsMap.entries()).map(([x, y]) => ({x, y})),
-        fill: false,
-        borderColor: "rgba(39, 157, 245, 0.8)",
-        backgroundColor: "rgba(39, 157, 245, 0.8)",
-        borderWidth: 2,
-        borderDash: [5, 5]
-    });
+    if (includeTotals === true) {
+        datasets.unshift({
+            label: "Total",
+            data: Array.from(totalsMap.entries()).map(([x, y]) => ({x, y})),
+            fill: false,
+            borderColor: "rgba(39, 157, 245, 0.8)",
+            backgroundColor: "rgba(39, 157, 245, 0.8)",
+            borderWidth: 2,
+            borderDash: [5, 5]
+        });
+    }
 
     return createChart(canvas, datasets, metricName, annotations, legendContainerElemendId);
 }
@@ -312,15 +315,15 @@ function populateResponseTimesTable() {
     tableBody.innerHTML = "";
     let rows = [];
     
-    // Variables to accumulate totals
-    let total_min = 0;
-    let total_p1 = 0;
-    let total_p2 = 0;
-    let total_p3 = 0;
-    let total_p4 = 0;
-    let total_p5 = 0;
-    let total_max = 0;
-    let total_avg = 0;
+    let total_min_values = [];
+    let total_p1_values = [];
+    let total_p2_values = [];
+    let total_p3_values = [];
+    let total_p4_values = [];
+    let total_p5_values = [];
+    let total_max_values = [];
+    let total_avg_values = [];
+    
     let total_requests = 0;
     let total_failures = 0;
     let endpoint_count = 0;
@@ -357,14 +360,17 @@ function populateResponseTimesTable() {
             Math.floor((total_failure_count / request_count) * 100) : 
             0;
         
-        total_min += responseTimes[0] || 0;
-        total_p1 += p1;
-        total_p2 += p2;
-        total_p3 += p3;
-        total_p4 += p4;
-        total_p5 += p5;
-        total_max += responseTimes[count - 1] || 0;
-        total_avg += count > 0 ? Math.floor(total_response_time / count) : 0;
+        if (count > 0) {
+            total_min_values.push(responseTimes[0]);
+            total_p1_values.push(p1);
+            total_p2_values.push(p2);
+            total_p3_values.push(p3);
+            total_p4_values.push(p4);
+            total_p5_values.push(p5);
+            total_max_values.push(responseTimes[count - 1]);
+            total_avg_values.push(Math.floor(total_response_time / count));
+        }
+        
         total_requests += request_count;
         total_failures += total_failure_count;
         
@@ -386,18 +392,22 @@ function populateResponseTimesTable() {
         );
     }
 
+    const calculateAverage = (arr) => arr.length > 0 ? 
+        Math.floor(arr.reduce((sum, val) => sum + val, 0) / arr.length) : 
+        0;
+
     if (endpoint_count > 0) {
         rows.push(
             `<tr style="font-weight: bold;">
                <td>Total</td>
-               <td>${total_min}</td>
-               <td>${total_p1}</td>
-               <td>${total_p2}</td>
-               <td>${total_p3}</td>
-               <td>${total_p4}</td>
-               <td>${total_p5}</td>
-               <td>${total_max}</td>
-               <td>${Math.floor(total_avg / endpoint_count)}</td>
+               <td>${calculateAverage(total_min_values)}</td>
+               <td>${calculateAverage(total_p1_values)}</td>
+               <td>${calculateAverage(total_p2_values)}</td>
+               <td>${calculateAverage(total_p3_values)}</td>
+               <td>${calculateAverage(total_p4_values)}</td>
+               <td>${calculateAverage(total_p5_values)}</td>
+               <td>${calculateAverage(total_max_values)}</td>
+               <td>${calculateAverage(total_avg_values)}</td>
                <td>${total_requests}</td>
                <td>${total_failures}</td>
                <td>${total_requests > 0 ? Math.floor((total_failures / total_requests) * 100) : 0}%</td>
