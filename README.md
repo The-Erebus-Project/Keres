@@ -23,7 +23,7 @@ First step is adding the core dependency in your project **.pom** file:
 <dependency>
     <groupId>io.github.vizanarkonin</groupId>
     <artifactId>keres</artifactId>
-    <version>1.3.1</version>
+    <version>1.3.2</version>
 </dependency>
 ```
 

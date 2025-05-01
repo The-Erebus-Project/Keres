@@ -260,8 +260,8 @@ public class KeresGrpcClient {
             public void onError(Throwable exception) {
                 log.error(exception.toString());
                 log.error(ExceptionUtils.getStackTrace(exception));
-                if(exception.getMessage().contains("UNAVAILABLE:")) {
-                    log.warn("UNAVAILABLE detected. Attempting to re-connect");
+                if(exception.getMessage().contains("UNAVAILABLE:") || exception.getMessage().contains("CANCELLED:")) {
+                    log.warn("UNAVAILABLE/CANCELLED detected. Attempting to re-connect");
                     onCompleted();
                     
                     KeresGrpcClient client = KeresGrpcClient.get();
