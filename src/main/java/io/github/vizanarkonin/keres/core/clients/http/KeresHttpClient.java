@@ -7,6 +7,7 @@ import io.github.vizanarkonin.keres.core.clients.KeresClientBase;
 import io.github.vizanarkonin.keres.core.clients.actions.ActionController;
 import io.github.vizanarkonin.keres.core.clients.actions.ParallelAction;
 import io.github.vizanarkonin.keres.core.clients.http.builders.KeresHttpRequest;
+import io.github.vizanarkonin.keres.core.executors.KeresUser;
 import io.github.vizanarkonin.keres.core.processing.DataCollector;
 import io.github.vizanarkonin.keres.core.utils.Response;
 import io.github.vizanarkonin.keres.core.utils.Tuple;
@@ -76,6 +77,42 @@ public class KeresHttpClient extends KeresClientBase<KeresHttpClient> {
         return this;
     }
 
+    /**
+     * Executes given request, and if it turns out failed - it will trigger virtual user shut-down.
+     * @param request   - Request to execute
+     * @return          - Instance of self for chaining
+     */
+    public KeresHttpClient executeAndStopIfFailed(KeresHttpRequest request) {
+        Response res = executeInternal(request);
+        // null only yields in case of KeresController.shouldStop() - in which case we don't interfere with shutdown
+        if (res == null) {
+            return this;
+        }
+
+        if (res.isFailed()) {
+            long userId = Thread.currentThread().threadId();
+            KeresUser user = KeresUser.getAllRunners().get(userId);
+            user.requestStop();
+            // We throw an exception in order to stop current method execution - in case there are more requests down the line.
+            throw new RuntimeException(String.format("Request '(%s)%s' has failed. Stopping virtual user '%d'", res.getRequestMethod(), res.getRequestName(), userId));
+        }
+
+        return this;
+    }
+
+    /**
+     * Same as above, but for multiple requests. Stops virtual user on the first failed request.
+     * @param requests  - List of requests to execute.
+     * @return          - Instance of self for chaining
+     */
+    public KeresHttpClient executeAndStopIfFailed(KeresHttpRequest... requests) {
+        for(KeresHttpRequest request : requests) {
+            executeAndStopIfFailed(request);
+        }
+
+        return this;
+    }
+
     public KeresHttpClient execute(KeresHttpRequest... requests) {
         for(KeresHttpRequest request : requests) {
             execute(request);
@@ -86,12 +123,23 @@ public class KeresHttpClient extends KeresClientBase<KeresHttpClient> {
 
     /**
      * Main entry point - takes KeresHttpRequest builder object, executes a request and reports it's results to DataCollector
-     * @param request   - KeresHttpRequest instance
+     * @param request   - Request to execute
      * @return          - Instance of self for chaining
      */
     public KeresHttpClient execute(KeresHttpRequest request) {
+        executeInternal(request);
+
+        return this;
+    }
+
+    /**
+     * Internal request processor - handles the request, executes it and returns a Response object.
+     * @param request   - Request to execute
+     * @return          - Response instance
+     */
+    private Response executeInternal(KeresHttpRequest request) {
         if (KeresController.shouldStop()) {
-            return this;
+            return null;
         }
         
         Response response = new Response()
@@ -193,7 +241,7 @@ public class KeresHttpClient extends KeresClientBase<KeresHttpClient> {
 
             // In case request was interrupted with InterruptedException
             if (!response.isFinished())
-                return this;
+                return response;
 
             if (finishTime == 0) {
                 finishTime = System.currentTimeMillis();
@@ -206,12 +254,12 @@ public class KeresHttpClient extends KeresClientBase<KeresHttpClient> {
                 .setResponseTime(timeElapsed)
                 .setFinishTime(finishTime);
             if (response.isSystemFailure() && !KeresController.isSystemExceptionsAreFails())
-                return this;
+                return response;
             
             DataCollector.get().logResponse(response);
         }
 
-        return this;
+        return response;
     }
 
     public KeresHttpClient action(String name, Consumer<KeresHttpClient> task) {

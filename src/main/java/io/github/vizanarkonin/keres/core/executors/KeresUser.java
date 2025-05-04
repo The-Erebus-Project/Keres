@@ -1,6 +1,5 @@
 package io.github.vizanarkonin.keres.core.executors;
 
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 
@@ -20,26 +19,22 @@ import io.github.vizanarkonin.keres.core.utils.TimeUtils;
  */
 public class KeresUser {
     private static final Logger log = LogManager.getLogger("KeresUser");
-    /**
-     * This map contains all existing instances of KeresUsers. For now it is used to get the number of active workers (users).
-     */
+    // Static storage for all currently existing keresUser instances.
     @Getter
-    private static final ConcurrentHashMap<String, KeresUser> allRunners  = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Long, KeresUser> allRunners  = new ConcurrentHashMap<>();
     @Getter
-    private String runnerUUID;
+    private long runnerId;
     private Thread runnerThread;
     private boolean isActive = true;
     @Getter
     private final Mode mode;
 
     private KeresUser(Mode mode, Thread thread) {
-        runnerUUID = UUID.randomUUID().toString();
         setThread(thread);
         this.mode = mode;
     }
 
     private KeresUser(Mode mode) {
-        runnerUUID = UUID.randomUUID().toString();
         this.mode = mode;
     }
 
@@ -66,7 +61,6 @@ public class KeresUser {
                 runnerTask.afterTask();
                 runnerTask.tearDown();
             } catch (Exception e) {
-                log.error(e);
                 log.error(ExceptionUtils.getStackTrace(e));
             } finally {
                 runner.unregisterRunner();
@@ -99,7 +93,6 @@ public class KeresUser {
 
                 runnerTask.tearDown();
             } catch (Exception e) {
-                log.error(e);
                 log.error(ExceptionUtils.getStackTrace(e));
             } finally {
                 runner.unregisterRunner();
@@ -137,7 +130,6 @@ public class KeresUser {
 
                 runnerTask.tearDown();
             } catch (Exception e) {
-                log.error(e);
                 log.error(ExceptionUtils.getStackTrace(e));
             } finally {
                 runner.unregisterRunner();
@@ -159,6 +151,14 @@ public class KeresUser {
     }
 
     /**
+     * Softly requests runner to initiate shut-down.
+     * NOTE: Only works for looped and cycled runners, have no effect on regular ones
+     */
+    public void requestStop() {
+        isActive = false;
+    }
+
+    /**
      * Sets the activity trigger to false and wait for thread to finish.
      * NOTE: Only works for looped and cycled runners, have no effect on regular ones
      */
@@ -169,9 +169,9 @@ public class KeresUser {
 
     /**
      * Clues client to stop execution and interrupts the runner thread.
-     * This is used to cause controller user shutdown.
+     * This is used to cause controlled user shutdown.
      */
-    public void sendStopSignal() {
+    public void abortExecution() {
         isActive = false;
         runnerThread.interrupt();
     }
@@ -191,14 +191,22 @@ public class KeresUser {
         return this;
     }
 
+    /**
+     * Adds KeresUser to allRunners list.
+     * IMPORTANT: This method MUST be called from inside the virtual user thread - it relies on thread ID for registration.
+     */
     private void registerRunner() {
-        log.trace("Registering runner " + runnerUUID + " in the runners map");
-        allRunners.put(runnerUUID, this);
+        runnerId = Thread.currentThread().threadId();
+        log.trace("Registering runner " + runnerId + " in the runners map");
+        allRunners.put(runnerId, this);
     }
 
+    /**
+     * Removes KeresUser from allRunners list.
+     */
     private void unregisterRunner() {
-        log.trace("Removing runner " + runnerUUID + " from the runners map");
-        allRunners.remove(runnerUUID);
+        log.trace("Removing runner " + runnerId + " from the runners map");
+        allRunners.remove(runnerId);
     }
 
     public static enum Mode {

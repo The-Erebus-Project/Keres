@@ -14,6 +14,7 @@ import io.github.vizanarkonin.keres.core.clients.actions.ActionController;
 import io.github.vizanarkonin.keres.core.clients.actions.ParallelAction;
 import io.github.vizanarkonin.keres.core.clients.actions.SequentialAction;
 import io.github.vizanarkonin.keres.core.clients.http.KeresHttpClient;
+import io.github.vizanarkonin.keres.core.executors.KeresUser;
 import io.github.vizanarkonin.keres.core.feeders.KeresFeeder;
 import io.github.vizanarkonin.keres.core.processing.DataCollector;
 import io.github.vizanarkonin.keres.core.utils.Response;
@@ -163,7 +164,7 @@ public abstract class KeresClientBase<T extends KeresClientBase<T>> {
      * @param lowerLimit    - Lower response time limit
      * @param higherLimit   - Higher response time limit
      */
-    public void mock(String method, String requestName, long lowerLimit, long higherLimit) {
+    public Response mock(String method, String requestName, long lowerLimit, long higherLimit) {
         long delay = new Random().nextLong(lowerLimit, higherLimit);
         boolean failed = new Random().nextBoolean();
         long start = System.currentTimeMillis();
@@ -183,6 +184,28 @@ public abstract class KeresClientBase<T extends KeresClientBase<T>> {
             .setResponseTime(elapsed);
 
         DataCollector.get().logResponse(res);
+
+        return res;
+    }
+
+    /**
+     * Same as above, but it aborts the virtual user execution in case request has failed.
+     * Primarily used for demonstration and data flow debugging purposes.
+     * @param method        - Method prefix
+     * @param requestName   - Request name
+     * @param lowerLimit    - Lower response time limit
+     * @param higherLimit   - Higher response time limit
+     */
+    public void mockAndStopIfFailed(String method, String requestName, long lowerLimit, long higherLimit) {
+        Response res = mock(method, requestName, lowerLimit, higherLimit);
+        
+        if (res.isFailed()) {
+            long userId = Thread.currentThread().threadId();
+            KeresUser user = KeresUser.getAllRunners().get(userId);
+            user.requestStop();
+            // We throw an exception in order to stop current method execution - in case there are more requests down the line.
+            throw new RuntimeException(String.format("Request '(%s)%s' has failed. Stopping virtual user '%d'", res.getRequestMethod(), res.getRequestName(), userId));
+        }
     }
 
     /**
