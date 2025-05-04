@@ -136,9 +136,11 @@ public class KeresController {
                 DataCollector.get().setRunUUID(uuid);
                 stopExecution = false;
     
+                scenario.initKeres();
                 scenario.setUp();
                 scenario.execute();
                 scenario.tearDown();
+                scenario.shutDown();
             } catch (Exception e) {
                 log.fatal(e);
                 log.fatal(ExceptionUtils.getStackTrace(e));

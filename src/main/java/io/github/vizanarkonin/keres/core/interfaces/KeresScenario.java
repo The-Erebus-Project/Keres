@@ -31,14 +31,23 @@ public abstract class KeresScenario {
         
     }
 
-    public void setUp() {
+    /**
+     * Service method. Used to initialize scenario instance and start internal Keres components
+     */
+    public final void initKeres() {
         metaData = this.getClass().getAnnotation(KeresScenarioMetaData.class);
         DataCollector.get().start(metaData.scenarioId(), metaData.description());
-    };
+    }
 
+    // User-defined methods. execute() implementation is mandatory, setUp and tearDown are optional
+    public void setUp() {};
     public abstract void execute();
-    
-    public void tearDown() {
+    public void tearDown() {};
+
+    /**
+     * Service method - used to stop internal components and halt the execution.
+     */
+    public final void shutDown() {
         DataCollector.get().stop();
-    };
+    }
 }
