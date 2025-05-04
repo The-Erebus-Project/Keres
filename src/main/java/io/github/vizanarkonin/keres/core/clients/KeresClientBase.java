@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.logging.log4j.LogManager;
@@ -134,11 +135,36 @@ public abstract class KeresClientBase<T extends KeresClientBase<T>> {
     // Cycle and conditional operators
     // ####################################################################
 
+    /**
+     * Simple repeat loop - performs provided procedure given amount of times.
+     * @param iterations    - Iterations to execute
+     * @param procedure     - Procedure to run
+     * @return              - Instance of self for chaining
+     */
     public T repeat(int iterations, Runnable procedure) {
         for (int iteration = 0; iteration < iterations; iteration++) {
             procedure.run();
         }
         
+        return (T)this;
+    }
+
+    /**
+     * Conditional attempt loop - performs given action until it yields positive result, but limited to a specified amount of attempts.
+     * If all attempts fail - virtual user is terminated.
+     * @param times     - Amount of attempts
+     * @param action    - Action to perform. If it returns true - action is considered successful and method is exited, and if false - it isn't, and iterator goes on to another attempt.
+     * @return          - Instance of self for chaining.
+     */
+    public T attempt(int times, Supplier<Boolean> action) {
+        for (int iteration = 0; iteration < times; iteration++) {
+            if (action.get())
+                return (T)this;
+        }
+
+        log.error("Attempt loop exceeded {} attempts limit. Requesting virtual user shutdown", times);
+        requestVirtualUserShutdown();
+
         return (T)this;
     }
 
@@ -200,12 +226,21 @@ public abstract class KeresClientBase<T extends KeresClientBase<T>> {
         Response res = mock(method, requestName, lowerLimit, higherLimit);
         
         if (res.isFailed()) {
-            long userId = Thread.currentThread().threadId();
-            KeresUser user = KeresUser.getAllRunners().get(userId);
-            user.requestStop();
-            // We throw an exception in order to stop current method execution - in case there are more requests down the line.
-            throw new RuntimeException(String.format("Request '(%s)%s' has failed. Stopping virtual user '%d'", res.getRequestMethod(), res.getRequestName(), userId));
+            log.error("Request '(%s)%s' has failed. Requesting virtual user termination", res.getRequestMethod(), res.getRequestName());
+            requestVirtualUserShutdown();
         }
+    }
+
+    /**
+     * Initiates graceful virtual user shutdown. Used when we need to terminate virtual user due to unfulfilled conditions.
+     * IMPORTANT: It MUST be called from the virtual user thread, since it resolves the thread id on it's own.
+     */
+    public void requestVirtualUserShutdown() {
+        long userId = Thread.currentThread().threadId();
+        KeresUser user = KeresUser.getAllRunners().get(userId);
+        user.requestStop();
+        // We throw an exception in order to stop current method execution - in case there are more requests down the line.
+        throw new RuntimeException(String.format("Virtual user '{}' was requested to stop. Processing...", userId));
     }
 
     /**
