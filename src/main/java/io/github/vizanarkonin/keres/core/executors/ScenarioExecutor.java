@@ -5,7 +5,6 @@ import java.util.Map.Entry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,7 +21,6 @@ public class ScenarioExecutor {
     private static final Logger                             log             = LogManager.getLogger("TaskExecutor");
     protected final String                                  executorUUID;
     protected final Class<? extends KeresUserDefinition>    task;
-    protected ConcurrentHashMap<String, KeresUser>          runners         = new ConcurrentHashMap<>();
     private Thread                                          watcherThread;
 
     private ScenarioExecutor(Class<? extends KeresUserDefinition> userDef) {
@@ -238,14 +236,14 @@ public class ScenarioExecutor {
      * NOTE: It will wait for any type of runner, so make sure you don't create a deadlock using looped users and this method.
      */
     public void waitForAllRunnersToFinish() {
-        runners.values().forEach(runner -> runner.waitToFinish());
+        KeresUser.getAllRunners().values().forEach(runner -> runner.waitToFinish());
     }
 
     /**
      * Sends stop signal to every active runner, effectively triggering execution stop.
      */
     public void abortExecution() {
-        runners.values().forEach(runner -> runner.sendStopSignal());
+        KeresUser.getAllRunners().values().forEach(runner -> runner.abortExecution());
     }
 
     // #########################################################################
@@ -265,23 +263,18 @@ public class ScenarioExecutor {
                 break;
             }
 
-            KeresUser runner;
             switch (userMode) {
                 case DEFAULT: 
-                    runner = KeresUser.initRegularUser(task);
+                    KeresUser.initRegularUser(task);
                     break;
                 case LOOPED:
-                    runner = KeresUser.initLoopedUser(task);
+                    KeresUser.initLoopedUser(task);
                     break;
                 case CYCLED:
-                    runner = KeresUser.initCycledUser(task, cyclesToExecute);
+                    KeresUser.initCycledUser(task, cyclesToExecute);
                     break;
                 default:
                     throw new RuntimeException("Unknown KeresUser mode - " + userMode);
-            }
-
-            synchronized(runners) {
-                runners.put(runner.getRunnerUUID(), runner);
             }
         }
     }
@@ -318,8 +311,8 @@ public class ScenarioExecutor {
             return;
         }
 
-        List<Entry<String, KeresUser>> runnersToTurnOff = new ArrayList<>(
-            runners
+        List<Entry<Long, KeresUser>> runnersToTurnOff = new ArrayList<>(
+            KeresUser.getAllRunners()
                 .entrySet()
                 .stream()
                 .filter(entry -> entry.getValue().getMode() == userMode)
@@ -336,9 +329,9 @@ public class ScenarioExecutor {
         }
 
         for (int index = 0; index < number; index++) {
-            Entry<String, KeresUser> entry = runnersToTurnOff.get(index);
-            entry.getValue().sendStopSignal();
-            runners.remove(entry.getKey());
+            Entry<Long, KeresUser> entry = runnersToTurnOff.get(index);
+            entry.getValue().abortExecution();
+            KeresUser.getAllRunners().remove(entry.getKey());
         }
     }
 
