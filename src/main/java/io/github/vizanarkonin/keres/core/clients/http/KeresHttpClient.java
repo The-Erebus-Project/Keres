@@ -83,18 +83,15 @@ public class KeresHttpClient extends KeresClientBase<KeresHttpClient> {
      * @return          - Instance of self for chaining
      */
     public KeresHttpClient executeAndStopIfFailed(KeresHttpRequest request) {
-        Response res = executeInternal(request);
+        Response res = executeWithResponse(request);
         // null only yields in case of KeresController.shouldStop() - in which case we don't interfere with shutdown
         if (res == null) {
             return this;
         }
 
         if (res.isFailed()) {
-            long userId = Thread.currentThread().threadId();
-            KeresUser user = KeresUser.getAllRunners().get(userId);
-            user.requestStop();
-            // We throw an exception in order to stop current method execution - in case there are more requests down the line.
-            throw new RuntimeException(String.format("Request '(%s)%s' has failed. Stopping virtual user '%d'", res.getRequestMethod(), res.getRequestName(), userId));
+            log.error("Request '({}){}' has failed. Requesting virtual user termination", res.getRequestMethod(), res.getRequestName());
+            requestVirtualUserShutdown();
         }
 
         return this;
@@ -127,17 +124,17 @@ public class KeresHttpClient extends KeresClientBase<KeresHttpClient> {
      * @return          - Instance of self for chaining
      */
     public KeresHttpClient execute(KeresHttpRequest request) {
-        executeInternal(request);
+        executeWithResponse(request);
 
         return this;
     }
 
     /**
-     * Internal request processor - handles the request, executes it and returns a Response object.
+     * Main workhorse of the client - builds and executes a request, submits results to data collector and returns a Response object instance for further handling
      * @param request   - Request to execute
      * @return          - Response instance
      */
-    private Response executeInternal(KeresHttpRequest request) {
+    public Response executeWithResponse(KeresHttpRequest request) {
         if (KeresController.shouldStop()) {
             return null;
         }
@@ -294,6 +291,27 @@ public class KeresHttpClient extends KeresClientBase<KeresHttpClient> {
             action.addAndStart(() -> { execute(task); });
         }
         action.waitForRequestsToFinish();
+
+        return this;
+    }
+
+    /**
+     * Attempts to successfully execute given request specified amount of times.
+     * If no attempts were successful - client requests virtual user termination.
+     * @param times     - Number of attempts
+     * @param request   - Request to attempt
+     * @return          - Instance of self to chain.
+     */
+    public KeresHttpClient attempt(int times, KeresHttpRequest request) {
+        for (int iteration = 0; iteration < times; iteration++) {
+            Response res = executeWithResponse(request);
+            if (!res.isFailed() && !res.isSystemFailure()) {
+                return this;
+            }
+        }
+
+        log.error("Attempt loop exceeded {} requests limit. Requesting virtual user shutdown", times);
+        requestVirtualUserShutdown();
 
         return this;
     }
