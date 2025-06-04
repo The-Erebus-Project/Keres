@@ -25,7 +25,7 @@ public class KeresUser {
     @Getter
     private long runnerId;
     private Thread runnerThread;
-    private boolean isActive = true;
+    private boolean isActive = false;
     @Getter
     private final Mode mode;
 
@@ -54,6 +54,7 @@ public class KeresUser {
                 KeresUserDefinition runnerTask = task.getConstructor().newInstance();
 
                 runner.registerRunner();
+                runner.isActive = true;
                 runnerTask.setUp();
                 runnerTask.beforeTask();
                 // NOTE: Regular runner should watch for shouldStop() state on it's own, since we do not pass it down
@@ -66,6 +67,7 @@ public class KeresUser {
                 runner.unregisterRunner();
             }
         }));
+        runner.waitForThreadStart();
 
         return runner;
     }
@@ -83,6 +85,7 @@ public class KeresUser {
                 KeresUserDefinition runnerTask = task.getConstructor().newInstance();
 
                 runner.registerRunner();
+                runner.isActive = true;
                 runnerTask.setUp();
 
                 while (runner.isActive && !KeresController.shouldStop()) {
@@ -98,6 +101,7 @@ public class KeresUser {
                 runner.unregisterRunner();
             }
         }));
+        runner.waitForThreadStart();
 
         return runner;
     }
@@ -116,6 +120,7 @@ public class KeresUser {
                 KeresUserDefinition runnerTask = task.getConstructor().newInstance();
 
                 runner.registerRunner();
+                runner.isActive = true;
                 runnerTask.setUp();
 
                 for (int cycle = 0; cycle < cyclesToPerform; cycle++) {
@@ -135,6 +140,7 @@ public class KeresUser {
                 runner.unregisterRunner();
             }
         }));
+        runner.waitForThreadStart();
 
         return runner;
     }
@@ -142,12 +148,22 @@ public class KeresUser {
     public KeresUser start() {
         if (!runnerThread.isAlive()) {
             runnerThread.start();
-            while (!runnerThread.isAlive()) {
-                TimeUtils.waitFor(TimeUtils.ONE_MS);
-            }
+            waitForThreadStart();
         }
 
         return this;
+    }
+
+    /**
+     * Private service method - used to await for thread to start before yielding control back to higher-level functions.
+     * Primarily intended to make sure we initialize the thread before leaving, reducing the risk of race conditions
+     */
+    private void waitForThreadStart() {
+        // TODO: We might want to make the timeout interval configurable. For now we'll hard-code it to 5 seconds.
+        long timeout = System.currentTimeMillis() + 5000;
+        while (!isActive && System.currentTimeMillis() <= timeout) {
+            TimeUtils.waitFor(TimeUtils.ONE_MS);
+        }
     }
 
     /**
