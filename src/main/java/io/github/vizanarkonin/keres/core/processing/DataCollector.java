@@ -381,13 +381,13 @@ public class DataCollector {
         Long firstStamp = 0L, lastStamp = 0L;
         for (Entry<String, ArrayList<Object[]>> entry : requestsLog.entrySet()) {
             Optional lowestEntry = entry.getValue().stream().min((obj1, obj2) -> Long.compare((long) obj1[0], (long) obj2[0]));
-            Optional highestEntry = entry.getValue().stream().max((obj1, obj2) -> Long.compare((long) obj1[0], (long) obj2[0]));
+            Optional highestEntry = entry.getValue().stream().max((obj1, obj2) -> Long.compare((long) obj1[1], (long) obj2[1]));
 
             if (!lowestEntry.isPresent() && !highestEntry.isPresent())
                 continue;
             
             long lowestEntryValue = (long)((Object[])lowestEntry.get())[0];
-            long highestEntryValue =(long)((Object[])highestEntry.get())[0];
+            long highestEntryValue =(long)((Object[])highestEntry.get())[1];
             if (firstStamp == 0L) {
                 firstStamp = lowestEntryValue;
             } else {
@@ -431,7 +431,7 @@ public class DataCollector {
                 List<Object[]> requests = entry
                     .getValue()
                     .stream()
-                        .filter(object -> (Long) object[0] > prevStamp && (Long) object[0] <= currentStamp).collect(Collectors.toList());
+                        .filter(object -> (Long) object[1] > prevStamp && (Long) object[1] <= currentStamp).collect(Collectors.toList());
 
                 long averageResponseTime = 0;
                 long requestsPerSecond = 0;
