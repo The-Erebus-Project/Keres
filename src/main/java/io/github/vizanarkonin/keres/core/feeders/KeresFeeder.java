@@ -22,6 +22,10 @@ public abstract class KeresFeeder {
      * @return Tuple - first element is a list with headers, second element is a string array with values from next row
      */
     public synchronized Tuple<ArrayList<String>, String[]> getNextRow() {
+        if (values.size() == 0) {
+            throw new IllegalStateException("Feeder has no data rows. " + getFeederName() + " is empty.");
+        }
+
         if (mode == FeedMode.CIRCULAR) {
             if (lastIndex >= values.size()) {
                 lastIndex = 0;
@@ -32,10 +36,14 @@ public abstract class KeresFeeder {
 
             return tuple;
         } else {
-            int index = new Random().nextInt(values.size() + 1);
+            int index = new Random().nextInt(values.size());
 
             return new Tuple<ArrayList<String>,String[]>(headers, values.get(index));
         }
+    }
+
+    protected String getFeederName() {
+        return getClass().getSimpleName();
     }
 
     public static enum FeedMode {

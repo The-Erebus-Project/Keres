@@ -323,12 +323,12 @@ public class ScenarioExecutor {
             return;
         }
 
+        int toRemove = Math.min(number, runnersToTurnOff.size());
         if (number > runnersToTurnOff.size()) {
-            log.info("Requested to remove " + number + " of " + userMode + " users but only " + runnersToTurnOff.size() + " were found. Removing " + number + " users");
-            runnersToTurnOff = runnersToTurnOff.subList(0, number - 1);
+            log.info("Requested to remove " + number + " of " + userMode + " users but only " + runnersToTurnOff.size() + " were found. Removing " + toRemove + " users");
         }
 
-        for (int index = 0; index < number; index++) {
+        for (int index = 0; index < toRemove; index++) {
             Entry<Long, KeresUser> entry = runnersToTurnOff.get(index);
             entry.getValue().abortExecution();
             KeresUser.getAllRunners().remove(entry.getKey());

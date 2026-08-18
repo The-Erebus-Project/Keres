@@ -238,8 +238,10 @@ public class DataCollector {
                 KeresFileUtils.copyResource(resourceStream, targetPath + "/" + reporterFile);
             }
             PrintWriter resultsWriter = new PrintWriter(targetPath + "/results.js", "UTF-8");
-            resultsWriter.println("const test_id = '" + testId + "';");
-            resultsWriter.println("const test_description = '" + testDescription + "';");
+            JSONObject testIdJson = new JSONObject();
+            testIdJson.put("test_id", testId);
+            resultsWriter.println("const test_id = '" + JSONObject.quote(testId) + "';");
+            resultsWriter.println("const test_description = '" + JSONObject.quote(testDescription) + "';");
             resultsWriter.println("const timestamps = " + new JSONArray(timestamps).toString() + ";");
             resultsWriter.println("const users_timeline = " + new JSONArray(currentUsersLog).toString() + ";");
             resultsWriter.println("const requests_averages_data = " + new JSONObject(averageResultsLog).toString() + ";");

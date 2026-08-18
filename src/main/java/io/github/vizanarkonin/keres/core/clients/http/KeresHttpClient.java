@@ -155,15 +155,16 @@ public class KeresHttpClient extends KeresClientBase<KeresHttpClient> {
 
             log.trace(request.getName());
             log.trace("Response:\r\nStatus:\r\n" + res.statusCode() + "\r\n\r\nBody:\r\n" + res.body() + "\r\n\r\nHeaders:\r\n" + res.headers().toString() + "\r\n");
+            String body = res.body() == null ? "" : res.body();
             response
                 .setResponseCode(res.statusCode())
-                .setResponseContent(res.body())
-                .setResponseSize(res.body().length())
+                .setResponseContent(body)
+                .setResponseSize(body.length())
                 .setFinishTime(finishTime);
             if (res.statusCode() >= 400) {
                 response
                     .setFailed(true)
-                    .setFailureCause(res.body().substring(0, res.body().length() > 100 ? 100 : res.body().length()));
+                    .setFailureCause(body.substring(0, body.length() > 100 ? 100 : body.length()));
             }
 
             if (request.getPostRequestTasks() != null) {

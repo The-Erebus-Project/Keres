@@ -243,7 +243,9 @@ public class KeresController {
         log.warn("Stop Execution called");
         log.warn("---------------------");
         stopExecution = true;
-        runnerThread.interrupt();
+        if (runnerThread != null) {
+            runnerThread.interrupt();
+        }
     }
 
     public static boolean shouldStop() {
